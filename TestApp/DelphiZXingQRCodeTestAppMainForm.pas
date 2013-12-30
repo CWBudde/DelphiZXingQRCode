@@ -29,7 +29,7 @@ type
   private
     QRCodeBitmap: TBitmap;
   public
-    procedure Update;
+    procedure UpdateSettings;
   end;
 
 var
@@ -39,30 +39,30 @@ implementation
 
 {$R *.dfm}
 
-procedure TForm1.cmbEncodingChange(Sender: TObject);
-begin
-  Update;
-end;
-
-procedure TForm1.edtQuietZoneChange(Sender: TObject);
-begin
-  Update;
-end;
-
-procedure TForm1.edtTextChange(Sender: TObject);
-begin
-  Update;
-end;
-
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   QRCodeBitmap := TBitmap.Create;
-  Update;
+  UpdateSettings;
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
 begin
   QRCodeBitmap.Free;
+end;
+
+procedure TForm1.cmbEncodingChange(Sender: TObject);
+begin
+  UpdateSettings;
+end;
+
+procedure TForm1.edtQuietZoneChange(Sender: TObject);
+begin
+  UpdateSettings;
+end;
+
+procedure TForm1.edtTextChange(Sender: TObject);
+begin
+  UpdateSettings;
 end;
 
 procedure TForm1.PaintBox1Paint(Sender: TObject);
@@ -74,17 +74,15 @@ begin
   if ((QRCodeBitmap.Width > 0) and (QRCodeBitmap.Height > 0)) then
   begin
     if (PaintBox1.Width < PaintBox1.Height) then
-    begin
-      Scale := PaintBox1.Width / QRCodeBitmap.Width;
-    end else
-    begin
+      Scale := PaintBox1.Width / QRCodeBitmap.Width
+    else
       Scale := PaintBox1.Height / QRCodeBitmap.Height;
-    end;
-    PaintBox1.Canvas.StretchDraw(Rect(0, 0, Trunc(Scale * QRCodeBitmap.Width), Trunc(Scale * QRCodeBitmap.Height)), QRCodeBitmap);
+    PaintBox1.Canvas.StretchDraw(Rect(0, 0, Trunc(Scale * QRCodeBitmap.Width),
+      Trunc(Scale * QRCodeBitmap.Height)), QRCodeBitmap);
   end;
 end;
 
-procedure TForm1.Update;
+procedure TForm1.UpdateSettings;
 var
   QRCode: TDelphiZXingQRCode;
   Row, Column: Integer;
@@ -100,12 +98,9 @@ begin
       for Column := 0 to QRCode.Columns - 1 do
       begin
         if (QRCode.IsBlack[Row, Column]) then
-        begin
-          QRCodeBitmap.Canvas.Pixels[Column, Row] := clBlack;
-        end else
-        begin
+          QRCodeBitmap.Canvas.Pixels[Column, Row] := clBlack
+        else
           QRCodeBitmap.Canvas.Pixels[Column, Row] := clWhite;
-        end;
       end;
     end;
   finally

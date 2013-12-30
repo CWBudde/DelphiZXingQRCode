@@ -2,11 +2,11 @@ object Form1: TForm1
   Left = 0
   Top = 0
   Caption = 'Delphi port of ZXing QRCode'
-  ClientHeight = 282
-  ClientWidth = 534
+  ClientHeight = 293
+  ClientWidth = 542
   Color = clBtnFace
-  Constraints.MinHeight = 320
-  Constraints.MinWidth = 550
+  Constraints.MinHeight = 131
+  Constraints.MinWidth = 301
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -16,8 +16,8 @@ object Form1: TForm1
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   DesignSize = (
-    534
-    282)
+    542
+    293)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
@@ -51,12 +51,10 @@ object Form1: TForm1
   object PaintBox1: TPaintBox
     Left = 296
     Top = 32
-    Width = 230
-    Height = 242
+    Width = 238
+    Height = 253
     Anchors = [akLeft, akTop, akRight, akBottom]
     OnPaint = PaintBox1Paint
-    ExplicitWidth = 331
-    ExplicitHeight = 260
   end
   object edtText: TEdit
     Left = 8
