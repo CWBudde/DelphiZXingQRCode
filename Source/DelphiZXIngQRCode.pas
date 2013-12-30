@@ -1,6 +1,7 @@
 unit DelphiZXingQRCode;
 
-// ZXing QRCode port to Delphi, by Debenu Pty Ltd (www.debenu.com)
+// ZXing QRCode port to Delphi, by Debenu Pty Ltd
+// www.debenu.com
 
 // Original copyright notice
 (*
@@ -22,17 +23,37 @@ unit DelphiZXingQRCode;
 interface
 
 type
-  TQRCodeEncoding = (qrAuto, qrNumeric, qrAlphanumeric, qrISO88591, qrUTF8NoBOM, qrUTF8BOM);
-  T2DBooleanArray = array of array of Boolean;
+  TQRCodeEncoding = (qrAuto, qrNumeric, qrAlphanumeric, qrISO88591,
+    qrUTF8NoBOM, qrUTF8BOM);
 
   TDelphiZXingQRCode = class
+  private type
+    TBits2D = class
+    private
+      FSize: Integer;
+      FBits: PByte;
+      FWidth: Integer;
+      FHeight: Integer;
+      procedure SetBit(X, Y: Integer; Value: Boolean);
+      function GetBit(X, Y: Integer): Boolean;
+      procedure SetSize(Width, Height: Integer);
+      procedure SetHeight(const Value: Integer);
+      procedure SetWidth(const Value: Integer);
+    public
+      destructor Destroy; override;
+
+      property Bits[X, Y: Integer]: Boolean read GetBit write SetBit; default;
+      property Width: Integer read FWidth write SetWidth;
+      property Height: Integer read FHeight write SetHeight;
+      property Size: Integer read FSize;
+    end;
   protected
     FData: WideString;
     FRows: Integer;
     FColumns: Integer;
     FEncoding: TQRCodeEncoding;
     FQuietZone: Integer;
-    FElements: T2DBooleanArray;
+    FBits: TBits2D;
     procedure SetEncoding(NewEncoding: TQRCodeEncoding);
     procedure SetData(const NewData: WideString);
     procedure SetQuietZone(NewQuietZone: Integer);
@@ -40,6 +61,7 @@ type
     procedure Update;
   public
     constructor Create;
+
     property Data: WideString read FData write SetData;
     property Encoding: TQRCodeEncoding read FEncoding write SetEncoding;
     property QuietZone: Integer read FQuietZone write SetQuietZone;
@@ -51,7 +73,7 @@ type
 implementation
 
 uses
-  contnrs, Math, Classes;
+  Contnrs, Math, Classes;
 
 type
   TByteArray = array of Byte;
@@ -196,6 +218,7 @@ type
   public
     procedure Assign(Source: TErrorCorrectionLevel);
     function Ordinal: Integer;
+
     property Bits: Integer read FBits;
   end;
 
@@ -305,12 +328,14 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
     function At(X, Y: Integer): Integer;
     function IsValid: Boolean;
     function IsValidMaskPattern(MaskPattern: Integer): Boolean;
     procedure SetMatrix(NewMatrix: TByteMatrix);
     procedure SetECLevel(NewECLevel: TErrorCorrectionLevel);
     procedure SetAll(VersionNum, NumBytes, NumDataBytes, NumRSBlocks, NumECBytes, MatrixWidth: Integer);
+
     property QRCodeError: Boolean read FQRCodeError;
     property Mode: TMode read FMode write FMode;
     property Version: Integer read FVersion write FVersion;
@@ -998,7 +1023,6 @@ begin
       NumDataBytes, ECBlocks.GetNumBlocks, FinalBits);
 
     // QRCode qrCode = new QRCode();  // This is passed in
-
 
     QRCode.SetECLevel(ECLevel);
     QRCode.Mode := Mode;
@@ -3479,31 +3503,29 @@ begin
   end;
 end;
 
-function GenerateQRCode(const Input: WideString; EncodeOptions: Integer): T2DBooleanArray;
+function GenerateQRCode(const Input: WideString; EncodeOptions: Integer;
+  ErrorCorrectionBits: Integer = 1): TDelphiZXingQRCode.TBits2D;
 var
   Encoder: TEncoder;
   Level: TErrorCorrectionLevel;
   QRCode: TQRCode;
-  X: Integer;
-  Y: Integer;
+  X, Y: Integer;
 begin
+  Result := nil;
   Level := TErrorCorrectionLevel.Create;
-  Level.FBits := 1;
+  Level.FBits := ErrorCorrectionBits;
   Encoder := TEncoder.Create;
   QRCode := TQRCode.Create;
   try
     Encoder.Encode(Input, EncodeOptions, Level, QRCode);
     if (Assigned(QRCode.FMatrix)) then
     begin
-      SetLength(Result, QRCode.FMatrix.FHeight);
-      for Y := 0 to QRCode.FMatrix.FHeight - 1 do
-      begin
-        SetLength(Result[Y], QRCode.FMatrix.FWidth);
-        for X := 0 to QRCode.FMatrix.FWidth - 1 do
-        begin
-          Result[Y][X] := QRCode.FMatrix.Get(Y, X) = 1;
-        end;
-      end;
+      Result := TDelphiZXingQRCode.TBits2D.Create;
+      Result.Width := QRCode.FMatrix.FWidth;
+      Result.Height := QRCode.FMatrix.FHeight;
+      for Y := 0 to Result.Height - 1 do
+        for X := 0 to Result.Width - 1 do
+          Result[X, Y] := QRCode.FMatrix.Get(Y, X) = 1;
     end;
   finally
     QRCode.Free;
@@ -3511,6 +3533,65 @@ begin
     Level.Free;
   end;
 end;
+
+{ TDelphiZXingQRCode.TBits2D }
+
+destructor TDelphiZXingQRCode.TBits2D.Destroy;
+begin
+  FreeMem(FBits);
+  inherited;
+end;
+
+function TDelphiZXingQRCode.TBits2D.GetBit(X, Y: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  Index := Y * Width + X;
+  Result := (FBits[Index shr 3] and (1 shl (Index mod 8))) <> 0;
+end;
+
+procedure TDelphiZXingQRCode.TBits2D.SetBit(X, Y: Integer; Value: Boolean);
+var
+  Index: Integer;
+  BitAtPos: Byte;
+  BytePtr: PByte;
+begin
+  Index := Y * Width + X;
+  Assert((Index < FSize) and (Index >= 0));
+  BitAtPos := (1 shl (Index mod 8));
+  BytePtr := @FBits[Index shr 3];
+
+  if Value then
+    BytePtr^ := BytePtr^ or BitAtPos
+  else
+    BytePtr^ := BytePtr^ and not BitAtPos;
+end;
+
+procedure TDelphiZXingQRCode.TBits2D.SetHeight(const Value: Integer);
+begin
+  if FHeight <> Value then
+  begin
+    FHeight := Value;
+    SetSize(FHeight, FWidth);
+  end;
+end;
+
+procedure TDelphiZXingQRCode.TBits2D.SetSize(Width, Height: Integer);
+begin
+  FSize := Width * Height;
+  FreeMem(FBits);
+  GetMem(FBits, (FSize + 7) div 8);
+end;
+
+procedure TDelphiZXingQRCode.TBits2D.SetWidth(const Value: Integer);
+begin
+  if FWidth <> Value then
+  begin
+    FWidth := Value;
+    SetSize(FHeight, FWidth);
+  end;
+end;
+
 
 { TDelphiZXingQRCode }
 
@@ -3527,13 +3608,11 @@ function TDelphiZXingQRCode.GetIsBlack(Row, Column: Integer): Boolean;
 begin
   Dec(Row, FQuietZone);
   Dec(Column, FQuietZone);
-  if ((Row >= 0) and (Column >= 0) and (Row < (FRows - FQuietZone * 2)) and (Column < (FColumns - FQuietZone * 2))) then
-  begin
-    Result := FElements[Column, Row];
-  end else
-  begin
+  if ((Row >= 0) and (Column >= 0) and (Row < (FRows - FQuietZone * 2))
+    and (Column < (FColumns - FQuietZone * 2))) then
+    Result := FBits[Row, Column]
+  else
     Result := False;
-  end;
 end;
 
 procedure TDelphiZXingQRCode.SetData(const NewData: WideString);
@@ -3565,8 +3644,8 @@ end;
 
 procedure TDelphiZXingQRCode.Update;
 begin
-  FElements := GenerateQRCode(FData, Ord(FEncoding));
-  FRows := Length(FElements) + FQuietZone * 2;
+  FBits := GenerateQRCode(FData, Ord(FEncoding));
+  FRows := FBits.Width + FQuietZone * 2;
   FColumns := FRows;
 end;
 
